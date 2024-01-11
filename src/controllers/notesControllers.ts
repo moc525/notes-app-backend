@@ -27,7 +27,7 @@ export const getNote: RequestHandler = async (req, res, next) => {
         }
 
         const note = await NoteModel.findById(noteId).exec();
-        
+
         if (!note) {
             throw createHttpError(404, "Note not found!");
         }
@@ -49,7 +49,7 @@ export const createNote: RequestHandler<unknown, unknown, CreateNoteBody, unknow
     const text = req.body.text;
 
     try {
-        if (!title ) {
+        if (!title) {
             throw createHttpError(400, "Note must have a title!");
         }
 
@@ -58,12 +58,17 @@ export const createNote: RequestHandler<unknown, unknown, CreateNoteBody, unknow
             "text": text
         });
 
-        res.status(201).json({
-            newNote
-        });
+        res.status(201).json(newNote);
 
-    } catch (error) {
-        next(error);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+        // MongoDB error code for duplicate entries
+        if (error.code === 11000) {
+            next(createHttpError(400, "Note's title must be unique!"));
+        } else {
+            // Pass other errors to the next middleware
+            next(error);
+        }
     }
 }
 
@@ -86,7 +91,7 @@ export const updateNote: RequestHandler<UpdateNoteParams, unknown, UpdateNoteBod
             throw createHttpError(400, "Invalid note identifier!");
         }
 
-        if (!updatedTitle ) {
+        if (!updatedTitle) {
             throw createHttpError(400, "Note must have a title!");
         }
 
@@ -95,7 +100,7 @@ export const updateNote: RequestHandler<UpdateNoteParams, unknown, UpdateNoteBod
         if (!note) {
             throw createHttpError(404, "Note not found!");
         }
-        
+
         note.title = updatedTitle;
         note.text = (updatedText == undefined || "") ? note.text : updatedText;
 
@@ -103,8 +108,15 @@ export const updateNote: RequestHandler<UpdateNoteParams, unknown, UpdateNoteBod
 
         res.status(200).json(updatedNote);
 
-    } catch (error) {
-        next(error);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+        // MongoDB error code for duplicate entries
+        if (error.code === 11000) {
+            next(createHttpError(400, "Note's title must be unique!"));
+        } else {
+            // Pass other errors to the next middleware
+            next(error);
+        }
     }
 }
 
